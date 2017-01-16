@@ -1,13 +1,12 @@
 # Stack overflow CLI
-# Created by Gautam krishna R : www.github.com/gautamkrishnar
+# Created by 
+# Gautam krishna R : www.github.com/gautamkrishnar 
+# And open source contributors at GitHub: https://github.com/gautamkrishnar/socli#contributors
 
 import getopt
 import os
 import sys
 import urllib
-import re
-import codecs
-import ctypes
 
 import requests
 from bs4 import BeautifulSoup
@@ -20,8 +19,6 @@ rn = -1  # Result number (for -r and --res)
 ir = 0  # interactive mode off (for -i arg)
 tag = "" # tag based search
 query = ""
-#pattern_normalize = re.compile(r"[^\w\s\.\?\,\+\-\*\/\\\%]+")    # Keep only 0-9, a-z, A-Z, whitespace, dot, ?, comma, +, -, *, /, \, %, etc. Add more here.
-pattern_normalize = re.compile(r"^[\n]+")    # Remove newline and carriage return.
 
 ### To support python 2:
 if sys.version < '3.0.0':
@@ -39,6 +36,41 @@ else:
     def inputs(str):
         return input(str)
 
+### Fixes windows encoding errors
+def fixCodePage():
+	
+	import codecs
+	import ctypes
+	if sys.platform == 'win32':
+		if sys.stdout.encoding != 'cp65001':
+			os.system("echo off")
+			os.system("chcp 65001") # Change active page code
+			sys.stdout.write("\x1b[A") # Removes the output of chcp command
+			sys.stdout.flush()
+		LF_FACESIZE = 32
+		STD_OUTPUT_HANDLE = -11
+		class COORD(ctypes.Structure):
+		    _fields_ = [("X", ctypes.c_short), ("Y", ctypes.c_short)]
+
+		class CONSOLE_FONT_INFOEX(ctypes.Structure):
+			_fields_ = [("cbSize", ctypes.c_ulong),
+                ("nFont", ctypes.c_ulong),
+                ("dwFontSize", COORD),
+                ("FontFamily", ctypes.c_uint),
+                ("FontWeight", ctypes.c_uint),
+                ("FaceName", ctypes.c_wchar * LF_FACESIZE)]
+
+		font = CONSOLE_FONT_INFOEX()
+		font.cbSize = ctypes.sizeof(CONSOLE_FONT_INFOEX)
+		font.nFont = 12
+		font.dwFontSize.X = 7
+		font.dwFontSize.Y = 12
+		font.FontFamily = 54
+		font.FontWeight = 400
+		font.FaceName = "Lucida Console"
+		handle = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
+		ctypes.windll.kernel32.SetCurrentConsoleFontEx(handle, ctypes.c_long(False), ctypes.pointer(font))
+
 ### To implement colors:
 # From https://github.com/django/django/blob/master/django/core/management/color.py
 def supports_color():
@@ -48,6 +80,14 @@ def supports_color():
     """
     plat = sys.platform
     supported_platform = plat != 'Pocket PC' and (plat != 'win32' or 'ANSICON' in os.environ)
+    #To detect if socli is run in UNIX shell on a windows platform. If true then this function returns true
+    if os.name == "nt":
+        try:
+            test_shell = os.environ['SHELL']
+            if 'bash' in test_shell:
+                return True
+        except KeyError:
+            pass
     # To detect windows 10 cmd. Windows 10 cmd supports color by default
     # Removed due to the latest windows 10 update. The command prompt no longer  support color
     #
@@ -63,40 +103,6 @@ def supports_color():
     if not supported_platform or not is_a_tty:
         return False
     return True
-
-
-def fixCodePage():
-    #sys.setDefaultEncoding('utf-8')
-
-    #print_warning("Default Encoding: " + sys.getDefaultEncoding())
-
-    if sys.platform == 'win32':			
-        LF_FACESIZE = 32
-        STD_OUTPUT_HANDLE = -11
-
-        class COORD(ctypes.Structure):
-            _fields_ = [("X", ctypes.c_short), ("Y", ctypes.c_short)]
-
-        class CONSOLE_FONT_INFOEX(ctypes.Structure):
-            _fields_ = [("cbSize", ctypes.c_ulong),
-                ("nFont", ctypes.c_ulong),
-                ("dwFontSize", COORD),
-                ("FontFamily", ctypes.c_uint),
-                ("FontWeight", ctypes.c_uint),
-                ("FaceName", ctypes.c_wchar * LF_FACESIZE)]
-
-        font = CONSOLE_FONT_INFOEX()
-        font.cbSize = ctypes.sizeof(CONSOLE_FONT_INFOEX)
-        font.nFont = 12
-        font.dwFontSize.X = 7
-        font.dwFontSize.Y = 12
-        font.FontFamily = 54
-        font.FontWeight = 400
-        font.FaceName = "Lucida Console"
-
-        handle = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
-        ctypes.windll.kernel32.SetCurrentConsoleFontEx(handle, ctypes.c_long(False), ctypes.pointer(font))
-
 
 class bcolors:
     HEADER = '\033[95m'
@@ -141,12 +147,7 @@ def bold(str):
 
 def underline(str):
     return (format_str(str, bcolors.UNDERLINE))
-    
-def remove_unwanted_chars(str):
-    #print_green(str.encode('utf-8'))
-    #return str
-    return pattern_normalize.sub("", str)
-
+ 
 ## For testing exceptions
 def showerror(e):
     if DEBUG == True:
@@ -335,8 +336,6 @@ def wrongsyn(query):
 # Get Question stats
 def get_stats(soup):
     question_title = (soup.find_all("a",class_="question-hyperlink")[0].get_text())
-    #question_title = remove_unwanted_chars(question_title)
-    
     question_stats = (soup.find_all("span",class_="vote-count-post")[0].get_text())
     question_stats = "Votes " + question_stats + " | " + (((soup.find_all("div",\
                         class_="module question-stats")[0].get_text()).replace("\n", " ")).replace("     "," | "))
@@ -396,7 +395,7 @@ def main():
     global tag # tag based search (for -t arg)
     global query
     
-    fixCodePage()
+    fixCodePage() # For fixing encoding errors in windows
     
     # IF there is no command line options or if it is help argument:
     if (len(sys.argv) == 1) or ((sys.argv[1] == "-h") or (sys.argv[1] == "--help")):
@@ -404,7 +403,7 @@ def main():
         sys.exit(0)
     else:
         try:
-            options, rem = getopt.getopt(sys.argv[1:],"nit:r:q:", ["query=", "res=", "interactive=", "new" , "tag="])
+            options, rem = getopt.getopt(sys.argv[1:],"nit:r:q:", ["query=", "res=", "interactive", "new" , "tag="])
         except getopt.GetoptError:
             helpman()
             sys.exit(1)
@@ -440,8 +439,10 @@ def main():
         if tag != "":
             wrongsyn(query)
         if (rn == -1) and (ir == 0) and tag == "":
-            socli(" ".join(sys.argv[1:]))
-            sys.exit(0)
+            if sys.argv[1] in ['-q', '--query']:
+                socli(" ".join(sys.argv[2:]))
+            else:
+                socli(" ".join(sys.argv[1:]))
         elif (rn > 0):
             wrongsyn(query)
             socl_manusearch(query, rn)

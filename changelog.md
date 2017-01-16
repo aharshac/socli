@@ -1,4 +1,13 @@
 # SoCLI Changelog
+### 2.9
+* Many minor bug fixes
+
+### 2.8
+* Fixed Windows encoding problem
+
+### 2.7
+* Fixed some minor bugs
+
 ### 2.6
 * Fixed some minor typos
 * Added windows binary release
